@@ -439,5 +439,66 @@
           (should (string-match-p "weekly usage limit" inserted-text)))
       (ignore-errors (kill-buffer ollama-buddy--chat-buffer)))))
 
+(ert-deftest ollama-buddy-test-stream-newlines-preserved-after-thinking ()
+  "Test that newlines after a thinking block are preserved (PR #23).
+Models such as gemma stream newlines as their own chunks.  The
+leading-newline trim applied when a thinking block ends must disarm as
+soon as real content arrives, otherwise it swallows every subsequent
+newline and collapses paragraphs and lists into one run of text."
+  :tags '(backend)
+  (let* ((ollama-buddy--chat-buffer (generate-new-buffer " *test-chat*"))
+         (ollama-buddy-collapse-thinking t)
+         (ollama-buddy-hide-reasoning nil)
+         (ollama-buddy-convert-markdown-to-org nil)
+         (ollama-buddy--current-model "gemma4:26b")
+         (ollama-buddy--current-original-model "gemma4:26b")
+         (ollama-buddy--current-has-images nil)
+         (ollama-buddy--header-inserted-p nil)
+         (ollama-buddy--thinking-api-active nil)
+         (ollama-buddy--thinking-content-accumulator nil)
+         (ollama-buddy--thinking-block-start nil)
+         (ollama-buddy--thinking-arrow-marker nil)
+         (ollama-buddy--reasoning-skip-newlines nil)
+         (ollama-buddy--in-reasoning-section nil)
+         (ollama-buddy--current-token-count 0)
+         (ollama-buddy--current-token-start-time nil)
+         (ollama-buddy--token-update-timer nil)
+         (ollama-buddy--current-response "")
+         (inserted-text nil))
+    (unwind-protect
+        (progn
+          (with-current-buffer ollama-buddy--chat-buffer
+            (org-mode)
+            (setq ollama-buddy--response-start-position (copy-marker (point-max))
+                  ollama-buddy--turn-start-position (copy-marker (point-max))))
+          (cl-letf (((symbol-function 'run-with-timer)
+                     (lambda (&rest _) nil))
+                    ((symbol-function 'ollama-buddy--update-token-rate-display)
+                     (lambda (&rest _) nil))
+                    ((symbol-function 'ollama-buddy--extend-thinking-fold)
+                     (lambda (&rest _) nil))
+                    ((symbol-function 'ollama-buddy--insert-response-header)
+                     (lambda (model _original &optional _has-images)
+                       (with-current-buffer ollama-buddy--chat-buffer
+                         (goto-char (point-max))
+                         (insert (format "** [%s: RESPONSE]\n\n" model))
+                         (setq ollama-buddy--header-inserted-p t)
+                         (point-marker)))))
+            ;; Thinking arrives via the dedicated API field, then the model
+            ;; streams content with newlines as their own chunks.
+            (ollama-buddy--stream-process-json
+             '((message . ((thinking . "Let me think about this.")))))
+            (dolist (chunk '("\n" "\n" "Hello, world." "\n" "\n"
+                             "- item one" "\n" "- item two" "\n\n"
+                             "Second paragraph."))
+              (ollama-buddy--stream-process-json
+               `((message . ((content . ,chunk)))))))
+          (with-current-buffer ollama-buddy--chat-buffer
+            (setq inserted-text (buffer-string)))
+          (should (string-match-p "Hello, world\\.\n\n- item one" inserted-text))
+          (should (string-match-p "- item two\n\nSecond paragraph\\." inserted-text))
+          (should-not ollama-buddy--reasoning-skip-newlines))
+      (ignore-errors (kill-buffer ollama-buddy--chat-buffer)))))
+
 (provide 'ollama-buddy-backend-test)
 ;;; ollama-buddy-backend-test.el ends here
