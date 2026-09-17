@@ -451,52 +451,75 @@ The token is cached until expiry."
       (lambda (access-token)
         (ollama-buddy-copilot--send-with-token processed-prompt access-token))))))
 
+;; TODO: in theory it would be possible to create a config argument as for
+;; `ollama-buddy-remote--openai-send-payload'
 (defun ollama-buddy-copilot--send-with-token (prompt access-token)
   "Send PROMPT to Copilot API using ACCESS-TOKEN."
-  (let* ((history (when ollama-buddy-history-enabled
-                    (gethash ollama-buddy--current-model
-                             ollama-buddy--conversation-history-by-model
-                             nil)))
-         (system-prompt (ollama-buddy--effective-system-prompt))
-         (full-context (ollama-buddy-remote--build-context))
-         (messages (ollama-buddy-remote--build-openai-messages
-                    system-prompt history prompt full-context))
+  (let* ((prefix ollama-buddy-copilot-marker-prefix)
+         (api-key access-token)
+         (endpoint ollama-buddy-copilot-api-endpoint)
+         (temperature ollama-buddy-copilot-temperature)
          (max-tokens (or ollama-buddy-copilot-max-tokens 4096))
-         (json-payload
-          `((model . ,(ollama-buddy-remote--get-real-model-name
-                       ollama-buddy-copilot-marker-prefix
-                       ollama-buddy--current-model))
-            (messages . ,messages)
-            (temperature . ,ollama-buddy-copilot-temperature)
-            (max_tokens . ,max-tokens)))
-         (json-str (let ((json-encoding-pretty-print nil))
-                     (ollama-buddy-escape-unicode (json-encode json-payload))))
-         (start-point (ollama-buddy-remote--prepare-chat-buffer "GitHub Copilot")))
 
-    ;; Make the HTTP request
-    (let* ((url-request-method "POST")
-           (url-request-extra-headers
-            `(("Content-Type" . "application/json")
-              ("Authorization" . ,(concat "Bearer " access-token))
-              ("Editor-Version" . "vscode/1.85.0")
-              ("Editor-Plugin-Version" . "copilot-chat/0.12.0")
-              ("Openai-Organization" . "github-copilot")
-              ("Openai-Intent" . "conversation-panel")
-              ("User-Agent" . "GitHubCopilotChat/0.12.0")))
-           (url-request-data json-str)
-           (url-mime-charset-string "utf-8")
-           (url-mime-language-string nil)
-           (url-mime-encoding-string nil)
-           (url-mime-accept-string "application/json"))
+         ;; TODO: this is handled in the previous function
+         ;; (default-model (plist-get config :default-model))
 
-      (url-retrieve
-       ollama-buddy-copilot-api-endpoint
-       (lambda (status)
-         (let ((url-buf (current-buffer)))
-           (unwind-protect
-               (ollama-buddy-copilot--handle-response status start-point prompt)
-             (when (buffer-live-p url-buf)
-               (kill-buffer url-buf)))))))))
+         ;; TODO: check how is it handled in the `ollama-buddy-copilot--handle-response'
+         ;; (provider-name (plist-get config :provider-name))
+
+         ;; TODO: CONTINUE: get on with comparison
+         ;; (extra-headers (plist-get config :extra-headers))
+         ;; (token-count-var (plist-get config :token-count-var))
+         ;; (tools-schema (plist-get config :tools-schema))
+         ;; (tool-continuation-p (bound-and-true-p
+         ;;                        ollama-buddy-remote--tool-continuation-p))
+         )
+
+   (let* ((history (when ollama-buddy-history-enabled
+                     (gethash ollama-buddy--current-model
+                              ollama-buddy--conversation-history-by-model
+                              nil)))
+          (system-prompt (ollama-buddy--effective-system-prompt))
+          (full-context (ollama-buddy-remote--build-context))
+          ;; TODO: add tools mechanism
+          (messages (ollama-buddy-remote--build-openai-messages
+                     system-prompt history prompt full-context))
+          (max-tokens max-tokens)
+          (json-payload
+           `((model . ,(ollama-buddy-remote--get-real-model-name
+                        ollama-buddy-copilot-marker-prefix
+                        ollama-buddy--current-model))
+             (messages . ,messages)
+             (temperature . ,temperature)
+             (max_tokens . ,max-tokens)))
+          (json-str (let ((json-encoding-pretty-print nil))
+                      (ollama-buddy-escape-unicode (json-encode json-payload))))
+          (start-point (ollama-buddy-remote--prepare-chat-buffer "GitHub Copilot")))
+
+     ;; Make the HTTP request
+     (let* ((url-request-method "POST")
+            (url-request-extra-headers
+             `(("Content-Type" . "application/json")
+               ("Authorization" . ,(concat "Bearer " api-key))
+               ("Editor-Version" . "vscode/1.85.0")
+               ("Editor-Plugin-Version" . "copilot-chat/0.12.0")
+               ("Openai-Organization" . "github-copilot")
+               ("Openai-Intent" . "conversation-panel")
+               ("User-Agent" . "GitHubCopilotChat/0.12.0")))
+            (url-request-data json-str)
+            (url-mime-charset-string "utf-8")
+            (url-mime-language-string nil)
+            (url-mime-encoding-string nil)
+            (url-mime-accept-string "application/json"))
+
+       (url-retrieve
+        endpoint
+        (lambda (status)
+          (let ((url-buf (current-buffer)))
+            (unwind-protect
+                (ollama-buddy-copilot--handle-response status start-point prompt)
+              (when (buffer-live-p url-buf)
+                (kill-buffer url-buf))))))))))
 
 (defun ollama-buddy-copilot--handle-response (status start-point prompt)
   "Handle the Copilot API response.
