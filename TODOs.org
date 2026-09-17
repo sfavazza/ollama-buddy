@@ -1,0 +1,69 @@
+* notes
+** differences between copilot and other handlers
+*** open-ai
+1. send through ~ollama-buddy-remote--openai-send()~
+   1. process inline features and invoke the ~ollama-buddy-remote--openai-send-payload()~ callback
+   2. all arguments are mandatory
+      - ~model~ propagated
+      - ~prompt~ becomes ~processed-prompt~ in callback
+      - ~config~ among other things provides the ~:tools-schema~ hence the ~tool-continuation-p~
+*** copilot
+1. send through dedicated ~ollama-buddy-copilot--send()~ handler
+   1. process inline features and invoke a lambda callback
+   2. the callback defines the model in use FIXME why even providing the model as input?
+      - TODO: check whether by default the model is optional in ~ollama-buddy-remote--register-models~
+   3. handle token counter & access-token via ~ollama-buddy-copilot--get-access-token()~
+      1. in turn calls ~ollama-buddy-copilot--send-with-token~
+
+The file is divided in the following parts:
+- *variables* (as defined in other providers)
+- *token persistence functions* (after a login process succeeded)
+- *device flow auth*: login process
+- *API interaction*:
+  - get access token
+  - send prompt
+  - receive response (TODO: is handling different from other providers?) DONE:
+    + differently handled: suggests to login with ~ollama-buddy-copilot-login~, the rest seems the same as the
+      classic response handling, searches in:
+      * status plist
+      * reply buffer
+- static model registration
+*** thoughts
+- the model definition, despite in different places, is still handled the same way (~setq~ and ~or~)
+** other providers
+All mechanisms are defined in the =ollama-buddy-provider.el=, e.g. ~ollama-buddy-provider--gemini-send~.
+
+On a higher level the provider function to use is selected via ~ollama-buddy-provider--make-send-fn~. Which in
+turn is invoked by ~ollama-buddy-provider--fetch-models~.
+
+HINT: the ~:api-key~ of the ollama-buddy-provider-create can also be a function!
+
+Check how is it treated when ~:api-key~ is a function:
+- ~ollama-buddy-provider-create~ take as argument
+  - argument of ~ollama-buddy-provider--make~ which is a constructor of the ~ollama-buddy-provider~
+    ~cl-defstruct~
+    - all custom-send functions invoke the ~ollama-buddy-provider--resolve-key~ with provider as argument to
+      gather the provider-associated API-key, if a function _it just invokes it w/o argument_
+** TODO copilot: action plan [4/6]
+- [X] extract the token function such that it just return a token to be used in the headers of the request
+- [X] use the classic provider register:
+  - [X] approach like for _gemini_, _claude_, etc...
+  - [X] add additional headers as defined inside ~ollama-buddy-copilot--send-with-token~
+- [X] MAYBE: create ~ollama-buddy-provider--copilot-send~ function (inspired by list in
+  ~ollama-buddy-provider--make-send-fn~), though most of the copilot provided models are OpenAI compatible...can
+  re-use ~'openai~ API type
+- [X] +add to ~ollama-buddy-provider--make-send-fn~+ DONT openai type will suffice
+- [ ] find a solution to handle unauthorized error message in copilot reply
+- [ ] make model registration automatically invoked when customizing the variable
+  ~ollama-buddy-copilot-available-models~
+* observations
+** insanely slow to select a model if ollama is not running
+- ~ollama-buddy--get-running-models~ gets called for each recognized model
+  - in turn ~ollama-buddy--ollama-running~ is called, it takes about 4 seconds to realize ollama is not running
+- where is ~ollama-buddy--get-running-models~ executing?
+  - ~ollama-buddy--model-annotation~ is iterating over each available model, for each input char in minibuffer!
+  - this in turn is invoked by the ~completing-read()~ in ~ollama-buddy--swap-model()~
+
+CONCLUSION: with ~localhost~ as default endpoint it is fast, indicating a non reachable host causes extreme slow
+downs.
+
