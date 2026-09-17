@@ -1537,9 +1537,13 @@ the next model in the sequence is tried.  Set to nil to disable."
         (message "✈ Airplane mode is active — %s requires internet access" model)
       (cond
        ((eq backend 'curl)
-        (ollama-buddy-curl--send prompt specified-model tool-continuation-p))
+        (message "SFA: about to invoke with curl")
+        (ollama-buddy-curl--send prompt specified-model tool-continuation-p)
+        (message "SFA: ...curl invoked"))
        (t
-        (ollama-buddy--send prompt specified-model tool-continuation-p))))))
+        (message "SFA: about to execute ollama-buddy--send...")
+        (ollama-buddy--send prompt specified-model tool-continuation-p)
+        (message "SFA: ...invoked"))))))
 
 ;; Function to test communication backend
 (defun ollama-buddy-test-communication-backend ()

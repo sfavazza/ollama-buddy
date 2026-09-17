@@ -356,6 +356,7 @@ authentication via `ollama signin'."
   ;; Validate request
   (ollama-buddy--validate-send-request prompt tool-continuation-p)
 
+  (message "SFA: ollama-buddy--process-inline-prompt-async...")
   ;; Process inline delimiters asynchronously, then send
   (ollama-buddy--process-inline-prompt-async
    prompt
