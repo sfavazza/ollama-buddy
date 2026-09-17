@@ -1,0 +1,8 @@
+requests
+# IDE-support packages
+ty
+ruff
+ipython
+debugpy
+importmagic
+
