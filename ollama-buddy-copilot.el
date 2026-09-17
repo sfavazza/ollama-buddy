@@ -468,7 +468,15 @@ The token is cached until expiry."
                        ollama-buddy--current-model))
             (messages . ,messages)
             (temperature . ,ollama-buddy-copilot-temperature)
-            (max_tokens . ,max-tokens)))
+            (max_tokens . ,max-tokens)
+            ;; TODO: compare send/reply between Ollama & copilot via `./test-copilot-request.py'
+            ;; TODO: missing:
+            ;; - tool response parsing (no tool_calls alist from message)
+            ;; - tool execution and follow-up continuation loop
+            ;; ;; TEMP: test whether it works then add a similar logic as in ollama-buddy.el::ollama-buddy--build-chat-payload
+            ;; (think . t)
+            ;; (tools . ,(ollama-buddy-tools--generate-schema))
+            ))
          (json-str (let ((json-encoding-pretty-print nil))
                      (ollama-buddy-escape-unicode (json-encode json-payload))))
          (start-point (ollama-buddy-remote--prepare-chat-buffer "GitHub Copilot")))

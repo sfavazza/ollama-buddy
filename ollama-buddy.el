@@ -4614,6 +4614,7 @@ authentication via `ollama signin'.
 When TOOL-CONTINUATION-P is non-nil, this is a follow-up after tool execution
 and no new user message is added."
 
+  (message "SFA: classic send")
   ;; If the user is sending a new (non-continuation) message, clear any
   ;; paused-session state left by an interactive tool (e.g. ediff).
   (unless tool-continuation-p

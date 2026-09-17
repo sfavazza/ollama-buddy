@@ -122,6 +122,7 @@
 
 (defun ollama-buddy--send (&optional prompt model)
   "Send PROMPT with optional MODEL"
+  (message "SFA: mini")
   (unless (> (length prompt) 0)
     (user-error "Ensure prompt is defined"))
   (let* ((messages (reverse ollama-buddy--conversation-history))
