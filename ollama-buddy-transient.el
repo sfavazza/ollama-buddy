@@ -150,13 +150,6 @@
    ("R" "Switch" ollama-buddy-roles-switch-role)
    ("D" "Directory" ollama-buddy-roles-open-directory)])
 
-(transient-define-prefix ollama-buddy-transient-project-menu ()
-  "Project menu for Ollama Buddy."
-  ["Project"
-   ("p" "Attach File" ollama-buddy-project-attach-file)
-   ("c" "Attach Context" ollama-buddy-project-attach-context)
-   ("d" "Switch Directory" ollama-buddy-project-switch-directory)])
-
 ;;;###autoload
 (transient-define-prefix ollama-buddy-transient-menu ()
   "Ollama Buddy main menu."
@@ -170,9 +163,7 @@
      :if (lambda () (ollama-buddy--detect-available-agents)))
     ("r" "RAG" ollama-buddy-transient-rag-menu
      :if (lambda () (featurep 'ollama-buddy-rag)))
-    ("P" "Project" ollama-buddy-transient-project-menu
-     :if (lambda () (and (featurep 'ollama-buddy-project)
-                         (ollama-buddy-project-current-root))))
+    ("a" "Attachments" ollama-buddy-transient-attachment-menu)
     ("A" "Auth" ollama-buddy-transient-auth-menu)]
 
    ["Model"
@@ -221,8 +212,7 @@
     ("h" "Help/Menu" ollama-buddy--menu-help-assistant)
     ("b" "Dynamic Roles" ollama-buddy-role-transient-menu)
     ("I" "Install Extras" ollama-buddy-install-extras
-     :if (lambda () (ollama-buddy--extras-missing-p)))]]
-  )
+     :if (lambda () (ollama-buddy--extras-missing-p)))]])
 
 (transient-define-prefix ollama-buddy-transient-profile-menu ()
   "Parameter profiles menu for Ollama Buddy."
@@ -336,11 +326,18 @@
 
 (transient-define-prefix ollama-buddy-transient-attachment-menu ()
   "File attachment menu."
-  ["File Attachments"
-   ("j" "Attach file" ollama-buddy-attach-file)
-   ("l" "Show attachments" ollama-buddy-show-attachments)
-   ("d" "Detach file" ollama-buddy-detach-file)
-   ("0" "Clear all attachments" ollama-buddy-clear-attachments)])
+  [["File Attachments"
+    ("j" "Attach file" ollama-buddy-attach-file)
+    ("l" "Show attachments" ollama-buddy-show-attachments)
+    ("d" "Detach file" ollama-buddy-detach-file)
+    ("0" "Clear all attachments" ollama-buddy-clear-attachments)]
+
+   ["Project"
+    :if (lambda () (and (featurep 'ollama-buddy-project)
+                        (ollama-buddy-project-current-root)))
+    ("p" "Attach File" ollama-buddy-project-attach-file)
+    ("c" "Attach Context" ollama-buddy-project-attach-context)
+    ("d" "Switch Directory" ollama-buddy-project-switch-directory)]])
 
 (defun ollama-buddy--web-search-status ()
   "Return web search status for transient display."
