@@ -123,7 +123,7 @@
     ("#" "Token Stats" ollama-buddy-display-token-stats)
     ("C" "Context Info" ollama-buddy-show-context-info)
     ("C-o" "Toggle ORG/MD" ollama-buddy-toggle-markdown-conversion)]
-   
+
    ["Display Toggle"
     ("%" "Context Display" ollama-buddy-toggle-context-percentage)
     ("&" "Context Type" ollama-buddy-toggle-context-display-type)
@@ -197,13 +197,13 @@
     ("Q" "List" ollama-buddy-transient--tools-info)
     ("W" "In-Buffer Replace" ollama-buddy-toggle-in-buffer-replace)
     ("c" "Completion Mode" ollama-buddy-transient--completion-toggle)]]
-  
+
   [["History"
     ("J" "Toggle" ollama-buddy-toggle-history)
     ("X" "Clear" ollama-buddy-clear-history)
     ("H" "Edit" ollama-buddy-history-edit-model)
     ("Y" "Edit Max " ollama-buddy-set-max-history-length)]
-   
+
    ["Sessions"
     ("N" "New" ollama-buddy-sessions-new)
     ("f" "Load" ollama-buddy-sessions-load)
@@ -216,7 +216,7 @@
     ("y" "System Prompt" ollama-buddy-transient-system-prompts-menu)
     ("p" "Parameters" ollama-buddy-transient-parameter-menu)
     ("R" "Roles" ollama-buddy-transient-roles-management-menu)]
-   
+
    ["General"
     ("h" "Help/Menu" ollama-buddy--menu-help-assistant)
     ("b" "Dynamic Roles" ollama-buddy-role-transient-menu)
@@ -231,7 +231,7 @@
     (lambda ()
       (format "Current modified parameters: %s"
               (mapconcat #'symbol-name ollama-buddy-params-modified ", ")))]
-   
+
    ["Available Profiles"
     ("d" "Default" (lambda () (interactive)
                      (ollama-buddy-apply-param-profile "Default")
@@ -242,7 +242,7 @@
     ("p" "Precise" (lambda () (interactive)
                      (ollama-buddy-apply-param-profile "Precise")
                      (message "Applied Precise profile")))]
-   
+
    ]
   (interactive)
   (transient-setup 'ollama-buddy-transient-profile-menu))
@@ -257,19 +257,19 @@
     ("m" "Min P" (lambda () (interactive) (ollama-buddy-params-edit 'min_p)))
     ("y" "Typical P" (lambda () (interactive) (ollama-buddy-params-edit 'typical_p)))
     ("r" "Repeat Penalty" (lambda () (interactive) (ollama-buddy-params-edit 'repeat_penalty)))]
-   
+
    ["More Generation"
     ("f" "Frequency Penalty" (lambda () (interactive) (ollama-buddy-params-edit 'frequency_penalty)))
     ("s" "Presence Penalty" (lambda () (interactive) (ollama-buddy-params-edit 'presence_penalty)))
     ("n" "Repeat Last N" (lambda () (interactive) (ollama-buddy-params-edit 'repeat_last_n)))
     ("x" "Stop Sequences" (lambda () (interactive) (ollama-buddy-params-edit 'stop)))
     ("w" "Penalize Newline" (lambda () (interactive) (ollama-buddy-params-edit 'penalize_newline)))]
-   
+
    ["Mirostat"
     ("M" "Mirostat Mode" (lambda () (interactive) (ollama-buddy-params-edit 'mirostat)))
     ("T" "Mirostat Tau" (lambda () (interactive) (ollama-buddy-params-edit 'mirostat_tau)))
     ("E" "Mirostat Eta" (lambda () (interactive) (ollama-buddy-params-edit 'mirostat_eta)))]
-   
+
    ["Resource"
     ("c" "Num Ctx" (lambda () (interactive) (ollama-buddy-params-edit 'num_ctx)))
     ("b" "Num Batch" (lambda () (interactive) (ollama-buddy-params-edit 'num_batch)))
@@ -277,14 +277,14 @@
     ("G" "Main GPU" (lambda () (interactive) (ollama-buddy-params-edit 'main_gpu)))
     ("K" "Num Keep" (lambda () (interactive) (ollama-buddy-params-edit 'num_keep)))]
    ]
-  
+
   [["More Resource"
     ("P" "Num Predict" (lambda () (interactive) (ollama-buddy-params-edit 'num_predict)))
     ("S" "Seed" (lambda () (interactive) (ollama-buddy-params-edit 'seed)))
     ("N" "NUMA" (lambda () (interactive) (ollama-buddy-params-edit 'numa)))
     ("V" "Low VRAM" (lambda () (interactive) (ollama-buddy-params-edit 'low_vram)))
     ("o" "Vocab Only" (lambda () (interactive) (ollama-buddy-params-edit 'vocab_only)))]
-   
+
    ["Memory"
     ("m" "Use MMAP" (lambda () (interactive) (ollama-buddy-params-edit 'use_mmap)))
     ("L" "Use MLOCK" (lambda () (interactive) (ollama-buddy-params-edit 'use_mlock)))
@@ -301,7 +301,7 @@
                              (ollama-buddy-apply-param-profile "Precise")
                              (message "Applied Precise profile")))
 ]
-   
+
    ["Actions"
     ("l" "Display All" ollama-buddy-params-display)
     ("0" "Reset All" ollama-buddy-params-reset)
