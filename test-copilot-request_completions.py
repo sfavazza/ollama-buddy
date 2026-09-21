@@ -61,7 +61,7 @@ json_payload={
     # "model":"claude-opus-5",
     # "model":"gemini-3.8-flash",
     "model":"gemini-3.7-flash",
-    # DONT: not working
+    # DONT: not working (need responses API: https://developers.openai.com/api/docs/guides/migrate-to-responses?lang=python&update-generation-endpoints=chat-completions)
     # "model":"mai-code-1-flash",
     # "model":"gpt-5.6-terra",
     # "model":"gpt-5.6-sol",
@@ -70,7 +70,7 @@ json_payload={
     "messages": [
         {
             "role":"system",
-            "content": "Format responses in plain prose. Never use markdown tables. Use clear paragraphs and bullet points for structured information.\n\nRespond like smart caveman. Cut all filler, keep technical substance.\n- Drop articles (a, an, the), filler (just, really, basically, actually).\n- Drop pleasantries (sure, certainly, happy to).\n- No hedging. Fragments fine. Short synonyms. Short sentences.\n- Technical terms stay exact. Code blocks unchanged.\n- Pattern: thing -> action -> reason -> next step.\n- Reply only with requested info, straight to the point, no topic introduction.\n- Do not propose additional topics/alternative interpretations.\n- Do not repeat prompt.\n- When a prompt is ambiguous:\n - do not assume, ask!\n  - ask until mutual understanding about what to do"
+            "content": "Be concise and direct. Give short, focused answers without unnecessary elaboration."
         },
         {
             "role":"user",
