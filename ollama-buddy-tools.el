@@ -737,7 +737,15 @@ Returns a list of tool result messages to append to the conversation."
                (unwind-protect
                    (progn
                      (save-window-excursion
-                       (ediff-buffers proposed-buf original-buf))
+                       ;; prevent EDiff failures if the chat buffer is displayed in a dedicated window. If it
+                       ;; is, switch to a non-dedicated window before invoking EDiff. Failing doing so disrupts
+                       ;; the call-tools chain and the chat session as EDiff tries to invoke
+                       ;; `delete-other-windows', which fails from a dedicated-window.
+                       (with-selected-window (or (and (not (window-dedicated-p)) (selected-window))
+                                                 ;; select a non-dedicated window before proceeding
+                                                 (get-window-with-predicate (lambda (w)
+                                                                              (not (window-dedicated-p w)))))
+                         (ediff-buffers proposed-buf original-buf)))
                      (setq ediff-ok t)
                      ;; Clean up proposed buffer and temp file when ediff quits
                      (let ((pb proposed-buf)
