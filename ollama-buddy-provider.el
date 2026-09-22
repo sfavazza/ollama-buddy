@@ -209,9 +209,11 @@ MODEL is the prefixed model name, or nil for the default."
                      (not (and (boundp 'ollama-buddy--suppress-tools-once)
                                ollama-buddy--suppress-tools-once))
                      (fboundp 'ollama-buddy-tools--generate-schema))
-            (when (boundp 'ollama-buddy--suppress-tools-once)
-              (setq ollama-buddy--suppress-tools-once nil))
             (ollama-buddy-tools--generate-schema))))
+
+    (when (boundp 'ollama-buddy--suppress-tools-once)
+      (setq ollama-buddy--suppress-tools-once nil))
+
     (ollama-buddy-remote--openai-send
      prompt model
      (append

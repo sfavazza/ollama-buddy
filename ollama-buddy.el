@@ -2293,6 +2293,8 @@ Prompts for confirmation before closing."
       (when (featurep 'ollama-buddy-tools)
         (setq ollama-buddy-tools-enabled nil)
         (setq ollama-buddy-tools-auto-execute nil))
+      (when (boundp 'ollama-buddy--suppress-tools-once)
+        (setq ollama-buddy--suppress-tools-once nil))
       (quit-window nil (get-buffer-window buf))
       (kill-buffer buf))))
 
