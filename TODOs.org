@@ -57,6 +57,53 @@ Check how is it treated when ~:api-key~ is a function:
   ~ollama-buddy-copilot--get-access-token()~
 - [ ] make model registration automatically invoked when customizing the variable
   ~ollama-buddy-copilot-available-models~
+** TODO improvements [0/2]
+*** TODO tools [1/3]
+**** TODO proposal in minibuffer - brittle
+***** TODO proposed action visibility
+The action might not be visible in minibuffer, we don't want to accept an action w/o knowing what the AI is
+proposing. Make the process more robust:
+- create an ad-hoc buffer with the AI proposed intention
+- offer reply from the buffer (or other means)
+- visualize said buffer and offer minibuffer reply
+- if user by any chance close/interrupt the request process, the chat shall offer
+  - a restore option (e.g. repropose the last action)
+  - reset the tool call chain all together (inquiry the user if this is what they want)
+***** TODO general improvements
+- part of robustness:
+  - properly handle the ~ollama-buddy--suppress-tools-once~ variable, when something goes wrong, it cannot be
+    reset in a next prompt, even by destroying and re-creating a session the AI model cannot see tools because
+    the tools-schema generation is inhibited by this variable
+***** TODO allow steering AI actions
+Implement a workflow allowing the user to suggests alternative actions if user notices AI is going off-course.
+Namely the options when requesting user approval should be:
+- (y)es
+- (n)o (abort/suggest what to do)
+  - (a)bort
+  - (s)uggest what to do? (insert new prompt): perhaps continue in chat buffer
+- (A)ll (auto-execute)
+**** TODO empty RESPONSE sections before TOOLS section
+During a tool-calls chain, prior every *TOOLS* section an empty un-collapsable *RESPONSE* section is generated.
+**** DONE propose_file_changes ediff action could fail
+In my setup I have popper and the ~*Ollama Buddy Chat*~ is reliably opened in a side-window. This causes
+troubles:
+- the chat stops
+- trying to send a new message will trigger the following error:
+  #+begin_src shell
+  ollama-buddy: API error: Please ensure that the number of function response parts is equal to the number of function call parts of the function call turn.
+  #+end_src
+- only way to continue is to kill and start a new session
+  - WARNING: not even saving and restore a session would help, the ~*.el~ session file is already compromised
+- WORKAROUND: ~popper-toggle-type~ makes the chat buffer a normal window and the ediff invocation succeed
+***** issue
+Ediff invokes ~delete-other-windows~ but it fails if executed from within a dedicated window (like a side
+window).
+***** solution
+****** reproduce
+- create 2 buffers w/ single difference
+- invoke ~(ediff-buffers buf1 buf2)~ from within a dedicated window (any popper window will do)
+****** strategy
+- select non-dedicated window before invoking EDiff
 * observations
 ** insanely slow to select a model if ollama is not running
 - ~ollama-buddy--get-running-models~ gets called for each recognized model
