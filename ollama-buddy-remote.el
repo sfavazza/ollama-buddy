@@ -31,7 +31,6 @@
 (declare-function ollama-buddy--model-supports-tools "ollama-buddy")
 (declare-function ollama-buddy--send "ollama-buddy")
 ;; Tool module forward declarations
-(declare-function ollama-buddy-tools--generate-schema "ollama-buddy-tools")
 (declare-function ollama-buddy-tools--execute "ollama-buddy-tools")
 (declare-function ollama-buddy-tools--format-args-for-display "ollama-buddy-tools")
 ;; Provider module forward declarations

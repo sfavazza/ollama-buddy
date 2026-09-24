@@ -261,6 +261,19 @@ Uses a cached result when the registry and safe-mode have not changed."
             (when tools-list
               (vconcat (nreverse tools-list)))))))
 
+(defun ollama-buddy--maybe-generate-schema-tools ()
+  "Return a tools schema if the tool feature is active (and not
+suppressed), nil otherwise."
+  (if (and (featurep 'ollama-buddy-tools)
+           (bound-and-true-p ollama-buddy-tools-enabled)
+           (not (and (boundp 'ollama-buddy--suppress-tools-once)
+                     ollama-buddy--suppress-tools-once))
+           (fboundp 'ollama-buddy-tools--generate-schema))
+      (ollama-buddy-tools--generate-schema)
+    ;; reset tool suppress variable
+    (when (boundp 'ollama-buddy--suppress-tools-once)
+      (setq ollama-buddy--suppress-tools-once nil))))
+
 ;;; Fragment Merging
 
 (defun ollama-buddy-tools--merge-fragment (original fragment)

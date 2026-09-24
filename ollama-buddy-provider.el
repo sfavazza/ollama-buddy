@@ -91,7 +91,7 @@
 (require 'ollama-buddy-remote)
 
 ;; Tool module forward declarations
-(declare-function ollama-buddy-tools--generate-schema "ollama-buddy-tools")
+(declare-function ollama-buddy--maybe-generate-schema-tools "ollama-buddy-tools")
 
 ;;; Provider data structure
 ;; ============================================================================
@@ -203,16 +203,7 @@ updates to the provider struct are reflected immediately."
 (defun ollama-buddy-provider--openai-send (provider prompt model)
   "Send PROMPT via PROVIDER using the OpenAI-compatible path.
 MODEL is the prefixed model name, or nil for the default."
-  (let* ((tools-schema
-          (when (and (featurep 'ollama-buddy-tools)
-                     (bound-and-true-p ollama-buddy-tools-enabled)
-                     (not (and (boundp 'ollama-buddy--suppress-tools-once)
-                               ollama-buddy--suppress-tools-once))
-                     (fboundp 'ollama-buddy-tools--generate-schema))
-            (ollama-buddy-tools--generate-schema))))
-
-    (when (boundp 'ollama-buddy--suppress-tools-once)
-      (setq ollama-buddy--suppress-tools-once nil))
+  (let* ((tools-schema (ollama-buddy--maybe-generate-schema-tools)))
 
     (ollama-buddy-remote--openai-send
      prompt model
@@ -235,18 +226,11 @@ MODEL is the prefixed model name, or nil for the default."
 (defun ollama-buddy-provider--claude-send (provider prompt model)
   "Send PROMPT via PROVIDER using the Claude Messages API.
 MODEL is the prefixed model name, or nil for the default."
-  (let* ((openai-schema
-          (when (and (featurep 'ollama-buddy-tools)
-                     (bound-and-true-p ollama-buddy-tools-enabled)
-                     (not (and (boundp 'ollama-buddy--suppress-tools-once)
-                               ollama-buddy--suppress-tools-once))
-                     (fboundp 'ollama-buddy-tools--generate-schema))
-            (when (boundp 'ollama-buddy--suppress-tools-once)
-              (setq ollama-buddy--suppress-tools-once nil))
-            (ollama-buddy-tools--generate-schema)))
+  (let* ((openai-schema (ollama-buddy--maybe-generate-schema-tools))
          (tools-schema
           (when openai-schema
             (ollama-buddy-remote--convert-schema-to-claude openai-schema))))
+
     (ollama-buddy-remote--process-inline-features-async
      prompt
      (lambda (processed-prompt)
@@ -415,18 +399,11 @@ TOOLS-SCHEMA is an optional Claude-format tools vector."
 (defun ollama-buddy-provider--gemini-send (provider prompt model)
   "Send PROMPT via PROVIDER using the Gemini API.
 MODEL is the prefixed model name, or nil for the default."
-  (let* ((openai-schema
-          (when (and (featurep 'ollama-buddy-tools)
-                     (bound-and-true-p ollama-buddy-tools-enabled)
-                     (not (and (boundp 'ollama-buddy--suppress-tools-once)
-                               ollama-buddy--suppress-tools-once))
-                     (fboundp 'ollama-buddy-tools--generate-schema))
-            (when (boundp 'ollama-buddy--suppress-tools-once)
-              (setq ollama-buddy--suppress-tools-once nil))
-            (ollama-buddy-tools--generate-schema)))
+  (let* ((openai-schema (ollama-buddy--maybe-generate-schema-tools))
          (tools-schema
           (when openai-schema
             (ollama-buddy-remote--convert-schema-to-gemini openai-schema))))
+
     (ollama-buddy-remote--process-inline-features-async
      prompt
      (lambda (processed-prompt)

@@ -114,7 +114,7 @@
 (declare-function ollama-buddy-curl--make-request "ollama-buddy-curl")
 (declare-function ollama-buddy-curl--make-request-async "ollama-buddy-curl")
 
-(declare-function ollama-buddy-tools--generate-schema "ollama-buddy-tools")
+(declare-function ollama-buddy--maybe-generate-schema-tools "ollama-buddy-tools")
 (declare-function ollama-buddy-tools--process-tool-calls "ollama-buddy-tools")
 (declare-function ollama-buddy-tools-toggle "ollama-buddy-tools")
 (declare-function ollama-buddy-tools-toggle-auto-execute "ollama-buddy-tools")
@@ -4510,15 +4510,7 @@ Returns a plist with keys:
                         (when ollama-buddy--response-format
                           `((format . ,ollama-buddy--response-format)))))
          ;; Add tools schema if applicable
-         (with-tools (let* ((suppress (and (boundp 'ollama-buddy--suppress-tools-once)
-                                           ollama-buddy--suppress-tools-once))
-                            (_ (when suppress
-                                 (setq ollama-buddy--suppress-tools-once nil)))
-                            (schema (when (and (not suppress)
-                                               (featurep 'ollama-buddy-tools)
-                                               (bound-and-true-p ollama-buddy-tools-enabled)
-                                               (ollama-buddy--model-supports-tools model))
-                                      (ollama-buddy-tools--generate-schema))))
+         (with-tools (let* (schema (ollama-buddy--maybe-generate-schema-tools))
                        (if schema
                            (append base-payload `((tools . ,schema)))
                          base-payload)))
