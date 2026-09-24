@@ -90,6 +90,9 @@
 (defvar ollama-buddy--in-reasoning-section)
 (defvar ollama-buddy-project-summary-file)
 
+(setq ollama-buddy--stop-after-batch-prompt
+      "continue, I will manually apply the changes using EDiff, supply a brief summary of what was changed, mention that file is available via eregistry command")
+
 (defgroup ollama-buddy-params nil
   "Customization group for Ollama API parameters."
   :group 'ollama-buddy

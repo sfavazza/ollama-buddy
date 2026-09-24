@@ -3218,7 +3218,9 @@ TCP packets split a JSON object across multiple filter calls."
                               (progn
                                 (setq ollama-buddy-tools--stop-after-batch nil)
                                 (setq ollama-buddy--suppress-tools-once t)
-                                (ollama-buddy--send "continue, I will manually apply the changes using ediff, please just supply a brief summary of what was changed making sure to mention that the file is available in the eregistry" ollama-buddy--current-model nil))
+                                (ollama-buddy--send ollama-buddy--stop-after-batch-prompt
+                                                    ollama-buddy--current-model
+                                                    nil))
                             (ollama-buddy--send nil ollama-buddy--current-model t))))
 
                     ;; === NORMAL COMPLETION PATH ===

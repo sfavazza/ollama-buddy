@@ -680,9 +680,9 @@ TOOL-CONTINUATION-P is non-nil if this is already a continuation."
             (progn
               (setq ollama-buddy-tools--stop-after-batch nil)
               (setq ollama-buddy--suppress-tools-once t)
-              (ollama-buddy--send
-               "continue, I will manually apply the changes using ediff, please just supply a brief summary of what was changed"
-               model nil))
+              (ollama-buddy--send ollama-buddy--stop-after-batch-prompt
+                                  model
+                                  nil))
           (ollama-buddy--send nil model t))))))
 
 (defun ollama-buddy-remote--execute-tool-calls (tool-calls)
