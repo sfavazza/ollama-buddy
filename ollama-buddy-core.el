@@ -2758,6 +2758,19 @@ will sit under a *** Response sub-heading."
                 (lang (nth 2 item))
                 (code (nth 3 item)))
             (goto-char (point-min))
+            ;; FIXME: conversion does not look working properly: got something like:
+            ;; elisp
+            ;; (.... elisp code ...)
+            ;; #+begin_src
+            ;; ... text
+            ;; elisp
+            ;; (.... elisp code ...)
+            ;; #+end_src
+            ;;
+            ;; Might be due to the original code-block identification with place-holders... should debug prior
+            ;; conversion from markdown.
+            ;; CHECK: can reproduce letting a model write a simple Python script, in this case we don't even get
+            ;; the convertion, maybe just the beginning and the "```" remains at the end...
             (when (search-forward (format "<<<CODE-BLOCK-%d>>>" n) nil t)
               (replace-match (format "%s#+begin_src %s\n%s%s#+end_src"
                                      indent lang code indent)

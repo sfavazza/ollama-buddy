@@ -155,6 +155,8 @@ When PROMPT is nil (e.g. tool continuations), skips processing."
 ;;; Chat buffer preparation
 ;; ============================================================================
 
+;; NOTE: this creates the RESPONSE section, which remains empty when later on a tool call is invoked
+;; TODO: it should be delayed until a tool call detection is performed...
 (defun ollama-buddy-remote--prepare-chat-buffer (provider-name)
   "Prepare the chat buffer for a new response from PROVIDER-NAME.
 Returns the start-point marker for where the response content begins.

@@ -261,6 +261,8 @@ Uses a cached result when the registry and safe-mode have not changed."
             (when tools-list
               (vconcat (nreverse tools-list)))))))
 
+;; TODO: test whether disable/enable tools works. Maybe due to `caching' disabling tooling might not work
+;; FIXME: after disabling the tools, the tool stopped printing replies
 (defun ollama-buddy--maybe-generate-schema-tools ()
   "Return a tools schema if the tool feature is active (and not
 suppressed), nil otherwise."
