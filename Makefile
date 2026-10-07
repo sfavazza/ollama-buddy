@@ -76,6 +76,7 @@ test-core:
 		-l $(TEST_DIR)/ollama-buddy-core-test.el \
 		--eval "(ert-run-tests-batch-and-exit '(tag core))"
 
+## Run only core tests (tagged :api or :provider)
 test-remote:
 	$(BATCH) \
 		-L . \
@@ -83,6 +84,15 @@ test-remote:
 		-l $(TEST_DIR)/test-helper.el \
 		-l $(TEST_DIR)/ollama-buddy-remote-test.el \
 		--eval "(ert-run-tests-batch-and-exit '(or (tag api) (tag provider)))"
+
+## Run only core tests (tagged :tools)
+test-tools:
+	$(BATCH) \
+		-L . \
+		-L $(TEST_DIR) \
+		-l $(TEST_DIR)/test-helper.el \
+		-l $(TEST_DIR)/ollama-buddy-tools-test.el \
+		--eval "(ert-run-tests-batch-and-exit '(tag tools))"
 
 ## Run package-lint on all elisp files
 lint:

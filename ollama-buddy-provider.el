@@ -205,7 +205,7 @@ updates to the provider struct are reflected immediately."
 (defun ollama-buddy-provider--openai-send (provider prompt model)
   "Send PROMPT via PROVIDER using the OpenAI-compatible path.
 MODEL is the prefixed model name, or nil for the default."
-  (let* ((tools-schema (ollama-buddy--maybe-generate-schema-tools)))
+  (let* ((tools-schema (ollama-buddy--maybe-generate-schema-tools (ollama-buddy-provider-api-style provider))))
 
     (ollama-buddy-remote--openai-send
      prompt model
@@ -229,7 +229,7 @@ MODEL is the prefixed model name, or nil for the default."
 (defun ollama-buddy-provider--claude-send (provider prompt model)
   "Send PROMPT via PROVIDER using the Claude Messages API.
 MODEL is the prefixed model name, or nil for the default."
-  (let* ((openai-schema (ollama-buddy--maybe-generate-schema-tools))
+  (let* ((openai-schema (ollama-buddy--maybe-generate-schema-tools (ollama-buddy-provider-api-style provider)))
          (tools-schema
           (when openai-schema
             (ollama-buddy-remote--convert-schema-to-claude openai-schema))))
@@ -402,7 +402,7 @@ TOOLS-SCHEMA is an optional Claude-format tools vector."
 (defun ollama-buddy-provider--gemini-send (provider prompt model)
   "Send PROMPT via PROVIDER using the Gemini API.
 MODEL is the prefixed model name, or nil for the default."
-  (let* ((openai-schema (ollama-buddy--maybe-generate-schema-tools))
+  (let* ((openai-schema (ollama-buddy--maybe-generate-schema-tools (ollama-buddy-provider-api-style provider)))
          (tools-schema
           (when openai-schema
             (ollama-buddy-remote--convert-schema-to-gemini openai-schema))))

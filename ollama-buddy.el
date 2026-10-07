@@ -4510,7 +4510,10 @@ Returns a plist with keys:
                         (when ollama-buddy--response-format
                           `((format . ,ollama-buddy--response-format)))))
          ;; Add tools schema if applicable
-         (with-tools (let* (schema (ollama-buddy--maybe-generate-schema-tools))
+         (with-tools (let* (schema (ollama-buddy--maybe-generate-schema-tools
+                                    ;; FIXME: it is assumed all Ollama models supports only `chat/completions'
+                                    ;; endpoint.
+                                    'chat-completions))
                        (if schema
                            (append base-payload `((tools . ,schema)))
                          base-payload)))

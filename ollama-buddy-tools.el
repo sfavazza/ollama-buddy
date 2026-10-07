@@ -237,39 +237,57 @@ Example:
 (defvar ollama-buddy-tools--schema-cache-safe-mode nil
   "Value of `ollama-buddy-tools-safe-mode' when the schema cache was built.")
 
-(defun ollama-buddy-tools--generate-schema ()
+(defvar ollama-buddy-tools--responses-schema-cache nil
+  "Value of `ollama-buddy-tools-safe-mode' when the `responses' API schema cache was build.")
+
+(defun ollama-buddy-tools--generate-schema (api-style)
   "Generate the tools schema for the Ollama API request.
 Returns a vector of tool definitions in the format expected by Ollama.
 Uses a cached result when the registry and safe-mode have not changed."
-  (if (and ollama-buddy-tools--schema-cache
-           (eq ollama-buddy-tools--schema-cache-safe-mode
-               ollama-buddy-tools-safe-mode))
-      ollama-buddy-tools--schema-cache
-    (let (tools-list)
-      (maphash
-       (lambda (name spec)
-         (when (or (not ollama-buddy-tools-safe-mode)
-                   (plist-get spec :safe))
-           (push `((type . "function")
-                   (function . ((name . ,name)
-                                (description . ,(plist-get spec :description))
-                                (parameters . ,(plist-get spec :parameters)))))
-                 tools-list)))
-       ollama-buddy-tools--registry)
-      (setq ollama-buddy-tools--schema-cache-safe-mode ollama-buddy-tools-safe-mode
-            ollama-buddy-tools--schema-cache
-            (when tools-list
-              (vconcat (nreverse tools-list)))))))
+  (let ((safe-and-cache (eq ollama-buddy-tools--schema-cache-safe-mode
+                            ollama-buddy-tools-safe-mode))
+        (responses-api-p (eq api-style 'responses)))
+    (cond
+     ((and safe-and-cache ollama-buddy-tools--schema-cache)
+      ollama-buddy-tools--schema-cache)
+     ((and safe-and-cache ollama-buddy-tools--responses-schema-cache)
+      ollama-buddy-tools--responses-schema-cache)
+     (t
+      (let (tools-list)
+        (maphash
+         (lambda (name spec)
+           (when (or (not ollama-buddy-tools-safe-mode)
+                     (plist-get spec :safe))
+             (let* ((tool-descr-list
+                     `((name . ,name)
+                       (description . ,(plist-get spec :description))
+                       (parameters . ,(plist-get spec :parameters))))
+                    (tool-entry
+                     (cond
+                      (responses-api-p tool-descr-list)
+                      (t `((function . ,tool-descr-list))))))
+               (push `((type . "function") ,@tool-entry) tools-list))))
+         ollama-buddy-tools--registry)
+      ;; share tools cache status among API styles
+      (setq ollama-buddy-tools--schema-cache-safe-mode ollama-buddy-tools-safe-mode)
+      (let ((tools-schema (when tools-list
+                            (vconcat (nreverse tools-list)))))
+        (cond
+         (responses-api-p
+          (setq ollama-buddy-tools--responses-schema-cache tools-schema))
+         (t
+          (setq ollama-buddy-tools--schema-cache tools-schema)))))))))
 
-(defun ollama-buddy--maybe-generate-schema-tools ()
+(defun ollama-buddy--maybe-generate-schema-tools (api-style)
   "Return a tools schema if the tool feature is active (and not
-suppressed), nil otherwise."
+suppressed), nil otherwise. The schema (if generated) follows the given
+API-STYLE (see `:api-style' in ollama-buddy-provider)."
   (if (and (featurep 'ollama-buddy-tools)
            (bound-and-true-p ollama-buddy-tools-enabled)
            (not (and (boundp 'ollama-buddy--suppress-tools-once)
                      ollama-buddy--suppress-tools-once))
            (fboundp 'ollama-buddy-tools--generate-schema))
-      (ollama-buddy-tools--generate-schema)
+      (ollama-buddy-tools--generate-schema api-style)
     ;; reset tool suppress variable
     (when (boundp 'ollama-buddy--suppress-tools-once)
       (setq ollama-buddy--suppress-tools-once nil))))
