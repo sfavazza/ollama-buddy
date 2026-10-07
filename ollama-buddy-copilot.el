@@ -62,6 +62,11 @@
   :type 'string
   :group 'ollama-buddy-copilot)
 
+(defcustom ollama-buddy-copilot-responses-api-endpoint "https://api.githubcopilot.com/responses"
+  "Endpoint for GitHub Copilot chat completions API."
+  :type 'string
+  :group 'ollama-buddy-copilot)
+
 (defcustom ollama-buddy-copilot-available-models
   '(;; OpenAI models
     "gpt-4.1"
