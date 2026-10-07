@@ -97,5 +97,56 @@
     (should (equal "Hello world"
                    (ollama-buddy-remote--responses-output-text output)))))
 
+(ert-deftest ollama-buddy-remote-test-responses-output-tool-call ()
+  "Convert a non-streamed Responses function call to tool-call history shape."
+  :tags '(api provider)
+  (let ((calls
+         (ollama-buddy-remote--responses-output-tool-calls
+          [((type . "function_call")
+            (id . "fc_item_1")
+            (call_id . "call_1")
+            (name . "lookup")
+            (arguments . "{\"q\":\"Emacs\"}"))])))
+    (should (equal "call_1" (alist-get 'id (car calls))))
+    (should (equal "lookup"
+                   (alist-get 'name (alist-get 'function (car calls)))))
+    (should (equal "{\"q\":\"Emacs\"}"
+                   (alist-get 'arguments (alist-get 'function (car calls)))))))
+
+(ert-deftest ollama-buddy-remote-test-responses-streaming-tool-call ()
+  "Accumulate Responses function-call argument events."
+  :tags '(api provider)
+  (let ((ollama-buddy-remote--streaming-tool-call-acc nil))
+    (ollama-buddy-remote--responses-extract-content-with-tools
+     "{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"fc_item_1\",\"call_id\":\"call_1\",\"name\":\"lookup\",\"arguments\":\"\"}}")
+    (ollama-buddy-remote--responses-extract-content-with-tools
+     "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_item_1\",\"delta\":\"{\\\"q\\\":\"}")
+    (ollama-buddy-remote--responses-extract-content-with-tools
+     "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_item_1\",\"delta\":\"\\\"Emacs\\\"}\"}")
+    (let* ((calls (ollama-buddy-remote--build-tool-calls-from-acc))
+           (function (alist-get 'function (car calls))))
+      (should (equal "call_1" (alist-get 'id (car calls))))
+      (should (equal "lookup" (alist-get 'name function)))
+      (should (equal "{\"q\":\"Emacs\"}" (alist-get 'arguments function))))))
+
+(ert-deftest ollama-buddy-remote-test-responses-input-tool-results ()
+  "Convert OpenAI tool history to Responses function-call items."
+  :tags '(api provider)
+  (let ((input
+         (ollama-buddy-remote--responses-input-from-messages
+          '(((role . "assistant")
+             (content . "")
+             (tool_calls . [((id . "call_1")
+                             (type . "function")
+                             (function . ((name . "lookup")
+                                          (arguments . "{}"))))]))
+            ((role . "tool")
+             (tool_call_id . "call_1")
+            (content . "result"))))))
+    (should (equal "function_call" (alist-get 'type (aref input 0))))
+    (should (equal "call_1" (alist-get 'call_id (aref input 0))))
+    (should (equal "function_call_output" (alist-get 'type (aref input 1))))
+    (should (equal "result" (alist-get 'output (aref input 1))))))
+
 (provide 'ollama-buddy-remote-test)
 ;;; ollama-buddy-remote-test.el ends here

@@ -921,6 +921,51 @@ Returns the concatenated text from `output_text' content items."
      output
      "")))
 
+(defun ollama-buddy-remote--responses-tool-call-from-item (item)
+  "Convert a Responses API function-call ITEM to OpenAI tool-call shape."
+  (when (equal (alist-get 'type item) "function_call")
+    `((id . ,(or (alist-get 'call_id item)
+                 (alist-get 'id item)
+                 ""))
+      (type . "function")
+      (function . ((name . ,(or (alist-get 'name item) ""))
+                   (arguments . ,(or (alist-get 'arguments item) "")))))))
+
+(defun ollama-buddy-remote--responses-output-tool-calls (output)
+  "Extract function calls from a Responses API OUTPUT vector."
+  (when (vectorp output)
+    (delq nil
+          (mapcar #'ollama-buddy-remote--responses-tool-call-from-item
+                  output))))
+
+(defun ollama-buddy-remote--responses-input-from-messages (messages)
+  "Convert OpenAI-format MESSAGES into Responses API input items.
+The conversation history remains stored in OpenAI format internally."
+  (vconcat
+   (mapcan
+    (lambda (message)
+      (let ((role (alist-get 'role message)))
+        (cond
+         ((and (equal role "assistant") (alist-get 'tool_calls message))
+          (append
+           (when-let ((content (alist-get 'content message)))
+             (unless (equal content "")
+               (list `((role . "assistant") (content . ,content)))))
+           (mapcar
+            (lambda (tool-call)
+              (let ((function (alist-get 'function tool-call)))
+                `((type . "function_call")
+                  (call_id . ,(alist-get 'id tool-call))
+                  (name . ,(alist-get 'name function))
+                  (arguments . ,(alist-get 'arguments function)))))
+            (append (alist-get 'tool_calls message) nil))))
+         ((equal role "tool")
+          (list `((type . "function_call_output")
+                  (call_id . ,(alist-get 'tool_call_id message))
+                  (output . ,(alist-get 'content message)))))
+         (t (list message)))))
+    messages)))
+
 (defun ollama-buddy-remote--openai-extract-content-with-tools (data-str)
   "Extract content and accumulate tool calls from OpenAI SSE DATA-STR.
 Like `ollama-buddy-remote--openai-extract-content' but also detects
@@ -977,6 +1022,83 @@ incremental `delta.tool_calls' and accumulates them in
             content))
       (error
        (message "ollama-buddy: tools extractor error: %s on data: %.100s"
+                (error-message-string err) data-str)
+       nil))))
+
+(defun ollama-buddy-remote--responses-extract-content-with-tools (data-str)
+  "Extract text and accumulate function calls from Responses SSE DATA-STR."
+  (when (and data-str
+             (not (string-empty-p (string-trim data-str))))
+    (condition-case err
+        (let* ((json-object-type 'alist)
+               (json-array-type 'vector)
+               (json-key-type 'symbol)
+               (json-data (json-read-from-string data-str))
+               (type (alist-get 'type json-data)))
+          (cond
+           ((equal type "response.output_text.delta")
+            (alist-get 'delta json-data))
+           ((equal type "response.output_item.added")
+            (let* ((item (alist-get 'item json-data))
+                   (tool-call (ollama-buddy-remote--responses-tool-call-from-item
+                               item)))
+              (when tool-call
+                (unless ollama-buddy-remote--streaming-tool-call-acc
+                  (setq ollama-buddy-remote--streaming-tool-call-acc
+                        (make-hash-table :test 'equal)))
+                (puthash (alist-get 'id item)
+                         (list :id (alist-get 'id tool-call)
+                               :type "function"
+                               :name (alist-get 'name
+                                                (alist-get 'function tool-call))
+                               ;; will be populated by `response.function_call_arguments.delta' type items
+                               :arguments "")
+                         ollama-buddy-remote--streaming-tool-call-acc)))
+            nil)
+           ((equal type "response.function_call_arguments.delta")
+            (let* ((item-id (alist-get 'item_id json-data))
+                   (delta (or (alist-get 'delta json-data) ""))
+                   (existing (and ollama-buddy-remote--streaming-tool-call-acc
+                                  (gethash item-id
+                                           ollama-buddy-remote--streaming-tool-call-acc))))
+              ;; AI? what the consequence of having a `nil' `existing' symbol value?
+              (when (and existing (not (string-empty-p delta)))
+                (plist-put existing :arguments
+                           (concat (or (plist-get existing :arguments) "")
+                                   delta)))
+              nil))
+           ((equal type "response.function_call_arguments.done")
+            (let* ((item-id (alist-get 'item_id json-data))
+                   (existing (and ollama-buddy-remote--streaming-tool-call-acc
+                                  (gethash item-id
+                                           ollama-buddy-remote--streaming-tool-call-acc))))
+              (when existing
+                (plist-put existing :name (or (alist-get 'name json-data)
+                                              (plist-get existing :name)))
+                (plist-put existing :arguments
+                           (or (alist-get 'arguments json-data)
+                               (plist-get existing :arguments))))
+              nil))
+           ((equal type "response.output_item.done")
+            (let* ((item (alist-get 'item json-data))
+                   (tool-call (ollama-buddy-remote--responses-tool-call-from-item
+                               item)))
+              (when tool-call
+                (unless ollama-buddy-remote--streaming-tool-call-acc
+                  (setq ollama-buddy-remote--streaming-tool-call-acc
+                        (make-hash-table :test 'equal)))
+                (puthash (alist-get 'id item)
+                         (list :id (alist-get 'id tool-call)
+                               :type "function"
+                               :name (alist-get 'name
+                                                (alist-get 'function tool-call))
+                               :arguments (alist-get 'arguments
+                                                      (alist-get 'function tool-call)))
+                         ollama-buddy-remote--streaming-tool-call-acc)))
+            nil)
+           (t nil)))
+      (error
+       (message "ollama-buddy: Responses tools extractor error: %s on data: %.100s"
                 (error-message-string err) data-str)
        nil))))
 
@@ -1387,6 +1509,10 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
                                   history))
                       (ollama-buddy-remote--build-openai-messages
                        system-prompt history prompt full-context)))
+           (messages (if responses-api-p
+                         (ollama-buddy-remote--responses-input-from-messages
+                          messages)
+                       messages))
            (json-payload
             `((model . ,(ollama-buddy-remote--get-real-model-name
                          prefix ollama-buddy--current-model))
@@ -1410,6 +1536,8 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
                                 extra-headers))
            ;; Use tools-aware extractor when tools schema is present
            (extractor (cond
+                       ((and responses-api-p tools-schema)
+                        #'ollama-buddy-remote--responses-extract-content-with-tools)
                        (responses-api-p
                         #'ollama-buddy-remote--responses-extract-content)
                        (tools-schema
@@ -1463,9 +1591,12 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
                                  (when (and (vectorp choices) (> (length choices) 0))
                                    (alist-get 'message (aref choices 0))))
                                 (resp-tool-calls
-                                 (when message-obj
-                                   (let ((tc (alist-get 'tool_calls message-obj)))
-                                     (when tc (append tc nil))))))
+                                 (if responses-api-p
+                                     (ollama-buddy-remote--responses-output-tool-calls
+                                      (alist-get 'output json-response))
+                                   (when message-obj
+                                     (let ((tc (alist-get 'tool_calls message-obj)))
+                                       (when tc (append tc nil)))))))
                            ;; Extract the message content
                            (if error-message
                                (setq content (format "Error: %s"
