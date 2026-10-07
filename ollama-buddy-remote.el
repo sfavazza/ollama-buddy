@@ -885,6 +885,42 @@ Returns the token string, or nil if the line should be skipped."
             content))
       (error nil))))
 
+(defun ollama-buddy-remote--responses-extract-content (data-str)
+  "Extract content token from a Responses API SSE DATA-STR.
+Returns the token string for `response.output_text.delta' events, or nil
+for lifecycle and other non-content events."
+  (when (and data-str
+             (not (string-empty-p (string-trim data-str))))
+    (condition-case nil
+        (let* ((json-object-type 'alist)
+               (json-array-type 'vector)
+               (json-key-type 'symbol)
+               (json-data (json-read-from-string data-str))
+               (type (alist-get 'type json-data))
+               (delta (alist-get 'delta json-data)))
+          (when (and (string= type "response.output_text.delta")
+                     delta
+                     (not (eq delta :null)))
+            delta))
+      (error nil))))
+
+(defun ollama-buddy-remote--responses-output-text (output)
+  "Extract message text from a Responses API OUTPUT vector.
+Returns the concatenated text from `output_text' content items."
+  (when (vectorp output)
+    (mapconcat
+     (lambda (item)
+       (when (and (equal (alist-get 'type item) "message")
+                  (vectorp (alist-get 'content item)))
+         (mapconcat
+          (lambda (part)
+            (when (equal (alist-get 'type part) "output_text")
+              (or (alist-get 'text part) "")))
+          (alist-get 'content item)
+          "")))
+     output
+     "")))
+
 (defun ollama-buddy-remote--openai-extract-content-with-tools (data-str)
   "Extract content and accumulate tool calls from OpenAI SSE DATA-STR.
 Like `ollama-buddy-remote--openai-extract-content' but also detects
@@ -1292,7 +1328,8 @@ CONFIG is a plist with the following keys:
   :provider-name - display name (\"OpenAI\", \"Grok\", etc.)
   :extra-headers - additional HTTP headers alist (optional)
   :token-count-var - symbol for the token count variable
-  :tools-schema  - tools schema vector (optional, for tool calling)"
+  :tools-schema  - tools schema vector (optional, for tool calling)
+  :api-style     - `chat-completions' (default) or `responses'"
   ;; Process inline features asynchronously, then send
   (ollama-buddy-remote--process-inline-features-async
    prompt
@@ -1313,6 +1350,7 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
          (extra-headers (plist-get config :extra-headers))
          (token-count-var (plist-get config :token-count-var))
          (tools-schema (plist-get config :tools-schema))
+         (responses-api-p (eq (plist-get config :api-style) 'responses))
          (tool-continuation-p (bound-and-true-p
                                 ollama-buddy-remote--tool-continuation-p)))
 
@@ -1352,9 +1390,9 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
            (json-payload
             `((model . ,(ollama-buddy-remote--get-real-model-name
                          prefix ollama-buddy--current-model))
-              (messages . ,messages)
+              (,(if responses-api-p 'input 'messages) . ,messages)
               (temperature . ,temperature)
-              (max_tokens . ,max-tokens)))
+              (,(if responses-api-p 'max_output_tokens 'max_tokens) . ,max-tokens)))
            ;; Add tools schema if provided
            (json-payload
             (if tools-schema
@@ -1371,9 +1409,13 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
                                   ("Authorization" . ,(concat "Bearer " api-key)))
                                 extra-headers))
            ;; Use tools-aware extractor when tools schema is present
-           (extractor (if tools-schema
-                         #'ollama-buddy-remote--openai-extract-content-with-tools
-                       #'ollama-buddy-remote--openai-extract-content)))
+           (extractor (cond
+                       (responses-api-p
+                        #'ollama-buddy-remote--responses-extract-content)
+                       (tools-schema
+                        #'ollama-buddy-remote--openai-extract-content-with-tools)
+                       (t
+                        #'ollama-buddy-remote--openai-extract-content))))
 
       ;; Store continuation state for the streaming finalize
       (setq ollama-buddy-remote--streaming-tool-continuation-p tool-continuation-p)
@@ -1429,8 +1471,14 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
                                (setq content (format "Error: %s"
                                                      (ollama-buddy-remote--format-api-error
                                                       error-message)))
-                             (when message-obj
-                               (setq content (or (alist-get 'content message-obj) ""))))
+                             (if responses-api-p
+                                 (setq content
+                                       (or (alist-get 'output_text json-response)
+                                           (ollama-buddy-remote--responses-output-text
+                                          (alist-get 'output json-response))
+                                         ""))
+                               (when message-obj
+                                 (setq content (or (alist-get 'content message-obj) "")))))
                            ;; Branch: tool calls vs normal
                            (if (and resp-tool-calls
                                     tools-schema

@@ -36,7 +36,7 @@ ELISP_FILES = ollama-buddy.el \
 TEST_DIR = tests
 TEST_FILES = $(wildcard $(TEST_DIR)/*-test.el)
 
-.PHONY: all test test-core test-rag test-backend lint checkdoc byte-compile clean ci help
+.PHONY: all test test-remote test-core test-rag test-backend lint checkdoc byte-compile clean ci help
 
 all: ci
 
@@ -75,6 +75,14 @@ test-core:
 		-l $(TEST_DIR)/test-helper.el \
 		-l $(TEST_DIR)/ollama-buddy-core-test.el \
 		--eval "(ert-run-tests-batch-and-exit '(tag core))"
+
+test-remote:
+	$(BATCH) \
+		-L . \
+		-L $(TEST_DIR) \
+		-l $(TEST_DIR)/test-helper.el \
+		-l $(TEST_DIR)/ollama-buddy-remote-test.el \
+		--eval "(ert-run-tests-batch-and-exit '(or (tag api) (tag provider)))"
 
 ## Run package-lint on all elisp files
 lint:

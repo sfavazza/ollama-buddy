@@ -108,6 +108,8 @@
            :documentation "API key: string, function returning string, or nil.")
   (api-type 'openai :type symbol
             :documentation "One of: openai, claude, gemini.")
+  (api-style 'chat-completions :type symbol
+            :documentation "One of: chat-completions, responses.")
   (endpoint "" :type string
             :documentation "API endpoint URL.  For Gemini, include %s for model name.")
   (models-endpoint nil
@@ -210,6 +212,7 @@ MODEL is the prefixed model name, or nil for the default."
      (append
       (list :prefix (ollama-buddy-provider-prefix provider)
             :api-key (ollama-buddy-provider--resolve-key provider)
+            :api-style (ollama-buddy-provider-api-style provider)
             :endpoint (ollama-buddy-provider--resolve-endpoint provider model)
             :temperature (ollama-buddy-provider-temperature provider)
             :max-tokens (ollama-buddy-provider-max-tokens provider)
@@ -796,6 +799,9 @@ Optional:
   :api-type       - Symbol `openai' (default), `claude', or `gemini',
                     OR a function (MODEL) -> symbol for per-model
                     dispatch (one provider serving multiple shapes)
+  :api-style      - `chat-completions' (default) for models supporting the
+                    `chat/completions' endpoint, `responses' for models
+                    supporting the `responses' endpoint
   :models         - Static list of model names (without prefix)
   :models-endpoint - URL for dynamic model discovery
   :models-filter  - Predicate to filter discovered model IDs
@@ -816,6 +822,7 @@ Returns the provider struct."
          (endpoint (or (plist-get args :endpoint)
                        (error ":endpoint is required")))
          (api-type (or (plist-get args :api-type) 'openai))
+         (api-style (or (plist-get args :api-style) 'chat-completions))
          ;; Create a unique interned symbol for token counting
          (token-sym (intern
                      (format "ollama-buddy-provider--%s-token-count"
@@ -827,6 +834,7 @@ Returns the provider struct."
            :prefix prefix
            :api-key (plist-get args :api-key)
            :api-type api-type
+           :api-style api-style
            :endpoint endpoint
            :models-endpoint (plist-get args :models-endpoint)
            :models (plist-get args :models)
