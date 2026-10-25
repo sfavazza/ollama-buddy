@@ -1517,8 +1517,11 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
             `((model . ,(ollama-buddy-remote--get-real-model-name
                          prefix ollama-buddy--current-model))
               (,(if responses-api-p 'input 'messages) . ,messages)
-              (temperature . ,temperature)
               (,(if responses-api-p 'max_output_tokens 'max_tokens) . ,max-tokens)))
+           (json-payload
+            (if temperature
+                (append json-payload `((temperature . ,temperature)))
+              json-payload))
            ;; Add tools schema if provided
            (json-payload
             (if tools-schema

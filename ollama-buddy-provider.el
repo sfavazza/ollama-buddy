@@ -214,7 +214,8 @@ MODEL is the prefixed model name, or nil for the default."
             :api-key (ollama-buddy-provider--resolve-key provider)
             :api-style (ollama-buddy-provider-api-style provider)
             :endpoint (ollama-buddy-provider--resolve-endpoint provider model)
-            :temperature (ollama-buddy-provider-temperature provider)
+            ;; DEBUG: try to remove to test gpt-6-luna model
+            ;; :temperature (ollama-buddy-provider-temperature provider)
             :max-tokens (ollama-buddy-provider-max-tokens provider)
             :default-model (ollama-buddy-provider-default-model provider)
             :provider-name (ollama-buddy-provider-name provider)

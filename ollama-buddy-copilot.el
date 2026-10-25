@@ -440,9 +440,11 @@ expiry."
 (ollama-buddy-provider-create
  :name "copilot"
  :prefix ollama-buddy-copilot-marker-prefix
- :endpoint ollama-buddy-copilot-api-endpoint
+ ;; :endpoint ollama-buddy-copilot-api-endpoint
+ :endpoint ollama-buddy-copilot-responses-api-endpoint
  :api-key  #'ollama-buddy-copilot--get-access-token
  :api-type 'openai
+ :api-style 'responses
  :models ollama-buddy-copilot-available-models ; static model list
  :models-endpoint nil                          ; copilot does not allow model discovery through API
  :default-model ollama-buddy-copilot-default-model
