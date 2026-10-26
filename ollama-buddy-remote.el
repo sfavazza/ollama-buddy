@@ -418,7 +418,10 @@ Handles OpenAI, Claude, Gemini, and generic error formats."
 Cleans any previously registered models for PREFIX, then appends
 prefixed model names to `ollama-buddy-remote-models'."
   (let ((prefixed-models (mapcar (lambda (model-name)
-                                   (concat prefix model-name))
+                                   (concat prefix
+                                           (if (symbolp model-name)
+                                               (symbol-name model-name)
+                                             model-name)))
                                  models)))
     (when (fboundp 'ollama-buddy-register-model-handler)
       (ollama-buddy-register-model-handler prefix send-fn))
@@ -1472,6 +1475,7 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
          (extra-headers (plist-get config :extra-headers))
          (token-count-var (plist-get config :token-count-var))
          (tools-schema (plist-get config :tools-schema))
+         (parameters (plist-get config :parameters))
          (responses-api-p (eq (plist-get config :api-style) 'responses))
          (tool-continuation-p (bound-and-true-p
                                 ollama-buddy-remote--tool-continuation-p)))
@@ -1516,12 +1520,25 @@ MODEL and CONFIG are passed through from `ollama-buddy-remote--openai-send'."
            (json-payload
             `((model . ,(ollama-buddy-remote--get-real-model-name
                          prefix ollama-buddy--current-model))
-              (,(if responses-api-p 'input 'messages) . ,messages)
-              (,(if responses-api-p 'max_output_tokens 'max_tokens) . ,max-tokens)))
+              (,(if responses-api-p 'input 'messages) . ,messages)))
            (json-payload
-            (if temperature
-                (append json-payload `((temperature . ,temperature)))
-              json-payload))
+            (let ((payload json-payload))
+              (if parameters
+                  (dolist (parameter parameters)
+                    (setf (alist-get
+                           (if (and responses-api-p
+                                    (eq (car parameter) 'max_tokens))
+                               'max_output_tokens
+                             (car parameter))
+                           payload)
+                          (cdr parameter)))
+                (setf (alist-get 'temperature payload) temperature
+                      (alist-get (if responses-api-p
+                                     'max_output_tokens
+                                   'max_tokens)
+                                 payload)
+                      max-tokens))
+              payload))
            ;; Add tools schema if provided
            (json-payload
             (if tools-schema

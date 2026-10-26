@@ -123,6 +123,8 @@
   (temperature 0.7 :type float)
   (max-tokens nil
               :documentation "Max tokens integer or nil for API default.")
+  (parameters nil
+              :documentation "Additional default request parameters as a plist.")
   (extra-headers nil :type list
                  :documentation "Additional HTTP headers alist.")
   (token-count-sym nil
@@ -162,7 +164,9 @@ the caller passes nil."
       ollama-buddy--current-model
       (let ((default (ollama-buddy-provider-default-model provider)))
         (and default (concat (ollama-buddy-provider-prefix provider)
-                             default)))))
+                             (if (symbolp default)
+                                 (symbol-name default)
+                               default))))))
 
 (defun ollama-buddy-provider--resolve-api-type (provider model)
   "Return the API type symbol for PROVIDER and MODEL.
@@ -179,6 +183,60 @@ If endpoint is a function, call it with the effective model name."
     (if (functionp ep)
         (funcall ep (ollama-buddy-provider--effective-model provider model))
       ep)))
+
+(defun ollama-buddy-provider-model (name &rest properties)
+  "Return a model symbol named NAME with PROPERTIES attached.
+
+PROPERTIES is a property list whose keys are request parameter names,
+such as `:temperature' or `:effort'.  A property explicitly set to nil
+is retained and suppresses the provider default."
+  (let ((model (if (symbolp name) name (intern name))))
+    (while properties
+      (put model (pop properties) (pop properties)))
+    model))
+
+(defun ollama-buddy-provider--model-parameter (model key)
+  "Return MODEL's explicit property value for KEY, if present.
+The return value is `(PRESENT . VALUE)' so an explicit nil is
+distinguished from an absent property."
+  (let ((plist (and (symbolp model) (symbol-plist model))))
+    (if (plist-member plist key)
+        (cons t (plist-get plist key))
+      (cons nil nil))))
+
+(defun ollama-buddy-provider--effective-parameters (provider model)
+  "Return effective request parameters for PROVIDER and MODEL as an alist.
+Explicit properties on the static model override provider defaults,
+including properties whose value is nil.  Nil values are omitted from
+the returned alist."
+  (let ((defaults (copy-sequence (ollama-buddy-provider-parameters provider)))
+        (model-symbol (and model
+                           (intern (ollama-buddy-remote--get-real-model-name
+                                    (ollama-buddy-provider-prefix provider)
+                                    model)))))
+    (dolist (entry defaults)
+      (let* ((key (car entry))
+             (override (ollama-buddy-provider--model-parameter
+                        model-symbol
+                        (intern (concat ":" (symbol-name key))))))
+        (when (car override)
+          (setcdr entry (cdr override)))))
+    (when (symbolp model-symbol)
+      (let ((plist (symbol-plist model-symbol)))
+        (while plist
+          (let* ((key (pop plist))
+                 (value (pop plist))
+                 (name (substring (symbol-name key) 1))
+                 (json-key (intern (if (string= name "max-tokens")
+                                       "max_tokens"
+                                     name))))
+            (unless (or (eq key :api-style)
+                        (assq json-key defaults))
+              (push (cons json-key value) defaults))))))
+    (delq nil
+          (mapcar (lambda (entry)
+                    (unless (null (cdr entry)) entry))
+                  defaults))))
 
 ;;; Send function factory
 ;; ============================================================================
@@ -217,6 +275,8 @@ MODEL is the prefixed model name, or nil for the default."
             ;; DEBUG: try to remove to test gpt-6-luna model
             ;; :temperature (ollama-buddy-provider-temperature provider)
             :max-tokens (ollama-buddy-provider-max-tokens provider)
+            :parameters (ollama-buddy-provider--effective-parameters
+                         provider model)
             :default-model (ollama-buddy-provider-default-model provider)
             :provider-name (ollama-buddy-provider-name provider)
             :extra-headers (ollama-buddy-provider-extra-headers provider)
@@ -824,6 +884,8 @@ Returns the provider struct."
                        (error ":endpoint is required")))
          (api-type (or (plist-get args :api-type) 'openai))
          (api-style (or (plist-get args :api-style) 'chat-completions))
+         (parameter-keys '(:temperature :max-tokens))
+         (parameters nil)
          ;; Create a unique interned symbol for token counting
          (token-sym (intern
                      (format "ollama-buddy-provider--%s-token-count"
@@ -840,12 +902,40 @@ Returns the provider struct."
            :models-endpoint (plist-get args :models-endpoint)
            :models (plist-get args :models)
            :models-filter (plist-get args :models-filter)
-           :default-model (or (plist-get args :default-model)
-                              (car (plist-get args :models)))
-           :temperature (or (plist-get args :temperature) 0.7)
+           :default-model
+           (let ((default (or (plist-get args :default-model)
+                              (car (plist-get args :models)))))
+             (if (symbolp default) (symbol-name default) default))
+           :temperature (if (plist-member args :temperature)
+                            (plist-get args :temperature)
+                          0.7)
            :max-tokens (plist-get args :max-tokens)
+           :parameters
+           (let ((remaining args))
+             (while remaining
+               (let ((key (pop remaining))
+                     (value (pop remaining)))
+                 (when (and (keywordp key)
+                            (or (memq key parameter-keys)
+                                (not (memq key
+                                           '(:name :prefix :api-key :api-type
+                                             :api-style :endpoint
+                                             :models-endpoint :models
+                                             :models-filter :default-model
+                                             :extra-headers))))
+                            (setq parameters
+                                  (plist-put parameters key value)))))
+             (let ((alist nil))
+               (while parameters
+                 (let ((name (substring (symbol-name (pop parameters)) 1)))
+                   (push (cons (intern (if (string= name "max-tokens")
+                                           "max_tokens"
+                                         name))
+                               (pop parameters))
+                         alist)))
+               (nreverse alist)))
            :extra-headers (plist-get args :extra-headers)
-           :token-count-sym token-sym)))
+           :token-count-sym token-sym))))
 
     ;; Initialise the token counter symbol
     (set token-sym 0)

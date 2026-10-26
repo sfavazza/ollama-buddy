@@ -68,27 +68,28 @@
   :group 'ollama-buddy-copilot)
 
 (defcustom ollama-buddy-copilot-available-models
-  '(;; OpenAI models
-    "gpt-4.1"
-    "gpt-4o"
-    "gpt-5"
-    "gpt-5-mini"
-    ;; Anthropic models
-    "claude-sonnet-4"
-    "claude-sonnet-4.5"
-    "claude-haiku-4.5"
-    "claude-opus-4.1"
-    "claude-opus-4.5"
-    ;; Google models
-    "gemini-2.5-pro"
-    "gemini-3-flash"
-    "gemini-3-pro"
-    ;; xAI models
-    "grok-code-fast-1")
+  (list
+   ;; OpenAI models
+   (ollama-buddy-provider-model "gpt-4.1")
+   (ollama-buddy-provider-model "gpt-4o")
+   (ollama-buddy-provider-model "gpt-5")
+   (ollama-buddy-provider-model "gpt-5-mini")
+   ;; Anthropic models
+   (ollama-buddy-provider-model "claude-sonnet-4")
+   (ollama-buddy-provider-model "claude-sonnet-4.5")
+   (ollama-buddy-provider-model "claude-haiku-4.5")
+   (ollama-buddy-provider-model "claude-opus-4.1")
+   (ollama-buddy-provider-model "claude-opus-4.5")
+   ;; Google models
+   (ollama-buddy-provider-model "gemini-2.5-pro")
+   (ollama-buddy-provider-model "gemini-3-flash")
+   (ollama-buddy-provider-model "gemini-3-pro")
+   ;; xAI models
+   (ollama-buddy-provider-model "grok-code-fast-1"))
   "List of available Copilot models.
 These are the models available through GitHub Copilot Chat.
 Model availability depends on your Copilot subscription plan."
-  :type '(repeat string)
+  :type '(repeat sexp)
   :group 'ollama-buddy-copilot)
 
 (defcustom ollama-buddy-copilot-temperature 0.7
